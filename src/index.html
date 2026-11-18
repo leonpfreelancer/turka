@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#87c5ea">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="/manifest.webmanifest">
+<title>Țurca</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #87c5ea; touch-action: none; user-select: none; -webkit-user-select: none; font-family: system-ui, -apple-system, sans-serif; color: #1d2b36; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+  #hud { position: fixed; top: env(safe-area-inset-top, 0); left: 0; right: 0; padding: 10px 14px; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; pointer-events: none; font-weight: 600; }
+  #dist { font-size: 22px; }
+  #board { font-size: 14px; background: rgba(255,255,255,.65); border-radius: 10px; padding: 6px 10px; min-width: 130px; }
+  #board:empty { display: none; }
+  #board .row { display: flex; justify-content: space-between; gap: 12px; padding: 1px 0; }
+  #board .cur { color: #c0392b; }
+  #board .off { opacity: .45; }
+  #msg { position: fixed; left: 0; right: 0; top: 28%; text-align: center; font-weight: 700; font-size: 22px; pointer-events: none; padding: 0 16px; text-shadow: 0 1px 0 rgba(255,255,255,.6); }
+  #msg small { font-size: 15px; font-weight: 600; }
+  .panel { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(135,197,234,.55); padding: 16px; touch-action: auto; }
+  .panel.on { display: flex; }
+  .card { background: #fff; border-radius: 16px; padding: 20px; width: 100%; max-width: 340px; box-shadow: 0 8px 30px rgba(0,0,0,.15); max-height: 100%; overflow: auto; }
+  .card h1 { margin: 0 0 4px; font-size: 30px; }
+  .card h2 { margin: 0 0 12px; font-size: 20px; }
+  .card p { margin: 6px 0 12px; color: #4a5a66; font-size: 14px; }
+  input { width: 100%; font: inherit; font-size: 17px; padding: 11px 12px; border: 2px solid #cfe0ea; border-radius: 10px; margin-bottom: 10px; outline: none; user-select: text; -webkit-user-select: text; }
+  input:focus { border-color: #3a8fc7; }
+  button { width: 100%; font: inherit; font-size: 17px; font-weight: 700; padding: 12px; border: 0; border-radius: 10px; background: #3a8fc7; color: #fff; margin-bottom: 8px; cursor: pointer; }
+  button.alt { background: #e8f1f6; color: #1d2b36; }
+  button:disabled { opacity: .5; }
+  .rowb { display: flex; gap: 8px; }
+  .rowb > * { flex: 1; }
+  .code { font-size: 40px; font-weight: 800; letter-spacing: 8px; text-align: center; margin: 6px 0 10px; }
+  .plist { list-style: none; padding: 0; margin: 0 0 12px; }
+  .plist li { padding: 8px 10px; background: #f2f7fa; border-radius: 8px; margin-bottom: 6px; display: flex; justify-content: space-between; }
+  .err { color: #c0392b; font-size: 14px; min-height: 18px; margin-bottom: 6px; }
+  #topbtn { position: fixed; left: 14px; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); width: auto; padding: 8px 14px; font-size: 14px; background: rgba(255,255,255,.8); color: #1d2b36; display: none; }
+  #emojis { position: fixed; right: 14px; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); display: none; gap: 6px; }
+  #emojis button { width: 44px; height: 44px; padding: 0; font-size: 22px; background: rgba(255,255,255,.8); margin: 0; }
+  .float { position: fixed; font-size: 30px; pointer-events: none; animation: up 2s ease-out forwards; }
+  .float span { display: block; font-size: 12px; font-weight: 700; text-align: center; }
+  @keyframes up { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-120px); opacity: 0; } }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud"><span id="dist"></span><div id="board"></div></div>
+<div id="msg"></div>
+<button id="topbtn">← Меню</button>
+<div id="emojis"><button>👏</button><button>😂</button><button>🔥</button><button>😱</button></div>
+
+<div class="panel on" id="pMenu"><div class="card">
+  <h1>Țurca</h1>
+  <p>Подбрось цурку и отбей её как можно дальше. До 4 игроков онлайн.</p>
+  <input id="name" maxlength="16" placeholder="Твоё имя">
+  <button id="bCreate">Создать комнату</button>
+  <div class="rowb"><input id="codeIn" maxlength="4" placeholder="КОД" style="text-transform:uppercase;text-align:center;letter-spacing:4px"><button id="bJoin" class="alt" style="margin-bottom:10px">Войти</button></div>
+  <div class="err" id="menuErr"></div>
+  <button id="bSolo" class="alt">Тренировка (один)</button>
+</div></div>
+
+<div class="panel" id="pLobby"><div class="card">
+  <h2>Комната</h2>
+  <div class="code" id="lCode"></div>
+  <button id="bShare" class="alt">Пригласить друзей</button>
+  <ul class="plist" id="lPlayers"></ul>
+  <div class="err" id="lobbyErr"></div>
+  <button id="bStart">Начать игру</button>
+  <button id="bLeave" class="alt">Выйти</button>
+</div></div>
+
+<div class="panel" id="pEnd"><div class="card">
+  <h2>Итоги</h2>
+  <ul class="plist" id="eList"></ul>
+  <button id="bAgain">Ещё раз</button>
+  <button id="bEndLeave" class="alt">Выйти</button>
+</div></div>
+
+<script>
+(() => {
+  // ---------- физика (такая же в worker.js) ----------
+  const PX_PER_M = 40, GRAVITY = 1400, TOSS_SPEED = 720, POWER = 2.2, MAX_SPEED = 2600, BOUNCE = 0.35, FRICTION = 0.6, STEP = 1 / 120;
+  const PEAK = TOSS_SPEED * TOSS_SPEED / (2 * GRAVITY);
+  function physStep(t, dt) {
+    t.vy -= GRAVITY * dt; t.x += t.vx * dt; t.y += t.vy * dt;
+    if (t.y <= 0) {
+      t.y = 0;
+      if (Math.abs(t.vy) > 120) { t.vy = -t.vy * BOUNCE; t.vx *= FRICTION; }
+      else { t.vy = 0; t.vx *= Math.pow(0.02, dt); if (Math.abs(t.vx) < 8) return true; }
+    }
+    return false;
+  }
+
+  const $ = (id) => document.getElementById(id);
+  const cv = $('c'), ctx = cv.getContext('2d');
+  const distEl = $('dist'), msgEl = $('msg'), boardEl = $('board');
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+  };
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  let W, H, groundY;
+  function resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth; H = window.innerHeight;
+    cv.width = W * dpr; cv.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    groundY = H * 0.78;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // ---------- полёт ----------
+  const START_X = 80;
+  let fl = { phase: 'idle', t: { x: START_X, y: 0, vx: 0, vy: 0, a: 0, va: 0 }, owner: null, result: null };
+  let acc = 0;
+  function resetFlight(owner) {
+    fl = { phase: 'ready', t: { x: START_X, y: 0, vx: 0, vy: 0, a: 0, va: 0 }, owner, result: null };
+    acc = 0; distEl.textContent = '';
+  }
+  function toss() { fl.phase = 'tossed'; fl.t.vy = TOSS_SPEED; fl.t.va = 14; }
+  function launch(y, vx, vy) {
+    Object.assign(fl.t, { x: START_X, y, vx, vy, va: 20 + Math.hypot(vx, vy) / 60 });
+    fl.phase = 'hit'; acc = 0;
+  }
+  const meters = () => Math.max(0, (fl.t.x - START_X) / PX_PER_M);
+
+  // ---------- режим ----------
+  let mode = null; // 'solo' | 'online'
+  let best = parseFloat(store.get('turca_best')) || 0;
+  let myId = store.get('turca_id');
+  if (!myId) { myId = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2)); store.set('turca_id', myId); }
+  $('name').value = store.get('turca_name') || '';
+  const qCode = new URLSearchParams(location.search).get('room');
+  if (qCode) $('codeIn').value = qCode.toUpperCase().slice(0, 4);
+
+  function show(id) {
+    for (const p of ['pMenu', 'pLobby', 'pEnd']) $(p).classList.toggle('on', p === id);
+    $('topbtn').style.display = !id && mode ? 'block' : 'none';
+    $('emojis').style.display = mode === 'online' && id !== 'pMenu' ? 'flex' : 'none';
+  }
+
+  // ---------- соло ----------
+  function startSolo() {
+    disconnect();
+    mode = 'solo'; S = null; boardEl.innerHTML = '';
+    resetFlight(myId);
+    msgEl.innerHTML = 'Тапни — цурка подлетит.<br><small>Пока она в воздухе — свайпни вправо, чтобы ударить.</small>';
+    show(null);
+  }
+
+  // ---------- онлайн ----------
+  let skew = 0, ws = null, room = null, S = null, wantWs = false, turnKey = '', lastShot = null;
+  const CODE_CH = 'ABCDEFGHJKLMNPRSTUVWXYZ';
+  function getName() {
+    const n = $('name').value.trim().slice(0, 16);
+    if (!n) { $('menuErr').textContent = 'Введи имя'; return null; }
+    store.set('turca_name', n); return n;
+  }
+  function connect(code) {
+    disconnect();
+    mode = 'online'; room = code; wantWs = true; S = null; turnKey = '';
+    history.replaceState(null, '', '?room=' + code);
+    $('lCode').textContent = code; $('lobbyErr').textContent = ''; $('lPlayers').innerHTML = '';
+    show('pLobby'); open();
+  }
+  function open() {
+    const url = (location.protocol === 'https:' ? 'wss' : 'ws') + '://' + location.host + '/ws/' + room +
+      '?id=' + encodeURIComponent(myId) + '&name=' + encodeURIComponent(store.get('turca_name') || 'Игрок');
+    const s = new WebSocket(url);
+    ws = s;
+    s.onmessage = (e) => { if (ws === s) onMsg(JSON.parse(e.data)); };
+    s.onclose = () => {
+      if (ws !== s) return;
+      ws = null;
+      if (wantWs) { msgEl.innerHTML = 'Связь потеряна, переподключаюсь…'; setTimeout(() => { if (wantWs && !ws) open(); }, 1500); }
+    };
+  }
+  function disconnect() {
+    wantWs = false;
+    if (ws) { const s = ws; ws = null; try { s.close(); } catch (e) {} }
+  }
+  function send(o) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); }
+  const nameOf = (id) => { const p = S && S.players.find((x) => x.id === id); return p ? p.name : ''; };
+
+  function onMsg(m) {
+    if (m.type === 'error') {
+      wantWs = false; mode = null;
+      $('menuErr').textContent = m.msg; show('pMenu'); return;
+    }
+    if (m.type === 'state') { S = m; skew = Date.now() - m.now; renderState(); return; }
+    if (m.type === 'toss' && m.id !== myId) { resetFlight(m.id); toss(); msgEl.innerHTML = ''; }
+    if (m.type === 'shot') {
+      lastShot = m;
+      if (!(m.id === myId && fl.phase === 'hit')) launch(m.y, m.vx, m.vy);
+      else if (Math.abs(fl.t.vx - m.vx) > 1 || Math.abs(fl.t.vy - m.vy) > 1) launch(m.y, m.vx, m.vy);
+      fl.result = m.dist; msgEl.innerHTML = '';
+    }
+    if (m.type === 'missed') {
+      fl.phase = 'done';
+      msgEl.innerHTML = (m.id === myId ? 'Мимо!' : esc(nameOf(m.id)) + ': мимо!');
+    }
+    if (m.type === 'emoji') floatEmoji(m.e, nameOf(m.id));
+  }
+
+  function renderState() {
+    if (S.phase === 'lobby') {
+      show('pLobby');
+      $('lPlayers').innerHTML = S.players.map((p) => '<li><span>' + esc(p.name) + (p.id === myId ? ' (ты)' : '') + '</span><span>' + (p.id === S.host ? '👑' : '') + '</span></li>').join('');
+      const host = S.host === myId;
+      $('bStart').style.display = host ? 'block' : 'none';
+      $('lobbyErr').textContent = host ? (S.players.length < 2 ? 'Можно начать и одному, но с друзьями веселее' : '') : 'Ждём, когда хозяин комнаты начнёт игру';
+      boardEl.innerHTML = '';
+      return;
+    }
+    renderBoard();
+    if (S.phase === 'finished') {
+      const sorted = [...S.players].sort((a, b) => b.score - a.score);
+      $('eList').innerHTML = sorted.map((p, i) => '<li><span>' + ['🥇', '🥈', '🥉', '4.'][i] + ' ' + esc(p.name) + '</span><b>' + p.score.toFixed(1) + ' м</b></li>').join('');
+      $('bAgain').style.display = S.host === myId ? 'block' : 'none';
+      show('pEnd'); msgEl.innerHTML = ''; return;
+    }
+    show(null);
+    const key = S.round + ':' + S.turn;
+    if (key !== turnKey && !S.busy) {
+      turnKey = key;
+      resetFlight(S.turn);
+    }
+    if (!S.busy && fl.phase === 'ready') {
+      msgEl.innerHTML = 'Раунд ' + S.round + ' из ' + S.rounds + '<br>' + (S.turn === myId
+        ? 'Твой ход! Тапни, потом свайпни вправо.'
+        : 'Бьёт ' + esc(nameOf(S.turn)));
+    }
+  }
+
+  function renderBoard() {
+    if (!S || S.phase === 'lobby') return;
+    const pending = fl.phase === 'hit' && fl.result != null ? fl.owner : null;
+    const shown = (p) => p.id === pending ? p.score - fl.result : p.score;
+    boardEl.innerHTML = S.players.map((p) =>
+      '<div class="row' + (p.id === S.turn ? ' cur' : '') + (p.online ? '' : ' off') + '"><span>' + (p.id === S.turn ? '▶ ' : '') + esc(p.name) + '</span><span>' + shown(p).toFixed(1) + '</span></div>').join('') +
+      (S.phase === 'playing' ? '<div class="row" style="opacity:.6"><span>Раунд</span><span>' + S.round + '/' + S.rounds + '</span></div>' : '');
+  }
+
+  function floatEmoji(e, who) {
+    const d = document.createElement('div');
+    d.className = 'float';
+    d.innerHTML = esc(e) + '<span>' + esc(who) + '</span>';
+    d.style.left = (20 + Math.random() * (W - 80)) + 'px';
+    d.style.top = (H * 0.55) + 'px';
+    document.body.appendChild(d);
+    setTimeout(() => d.remove(), 2000);
+  }
+
+  // ---------- кнопки ----------
+  $('bCreate').onclick = () => {
+    if (!getName()) return;
+    let code = ''; for (let i = 0; i < 4; i++) code += CODE_CH[Math.floor(Math.random() * CODE_CH.length)];
+    connect(code);
+  };
+  $('bJoin').onclick = () => {
+    if (!getName()) return;
+    const code = $('codeIn').value.trim().toUpperCase();
+    if (!/^[A-Z0-9]{4}$/.test(code)) { $('menuErr').textContent = 'Код — 4 символа'; return; }
+    connect(code);
+  };
+  $('bSolo').onclick = () => { $('menuErr').textContent = ''; startSolo(); };
+  $('bStart').onclick = () => send({ type: 'start' });
+  $('bAgain').onclick = () => send({ type: 'start' });
+  const leave = () => {
+    disconnect(); mode = null; S = null; boardEl.innerHTML = ''; msgEl.innerHTML = ''; distEl.textContent = '';
+    fl.phase = 'idle'; history.replaceState(null, '', '/'); show('pMenu');
+  };
+  $('bLeave').onclick = leave; $('bEndLeave').onclick = leave; $('topbtn').onclick = leave;
+  $('bShare').onclick = async () => {
+    const url = location.origin + '/?room=' + room;
+    const text = 'Играем в цурку! Код комнаты: ' + room;
+    try {
+      if (navigator.share) await navigator.share({ title: 'Țurca', text, url });
+      else { await navigator.clipboard.writeText(url); $('lobbyErr').textContent = 'Ссылка скопирована'; }
+    } catch (e) {}
+  };
+  for (const b of $('emojis').querySelectorAll('button')) b.onclick = (e) => { e.stopPropagation(); send({ type: 'emoji', e: b.textContent }); };
+
+  // ---------- ввод на поле ----------
+  let sw = null;
+  const pos = (e) => { const p = e.changedTouches ? e.changedTouches[0] : e; return { x: p.clientX, y: p.clientY, t: performance.now() }; };
+  const myTurn = () => mode === 'solo' || (mode === 'online' && S && S.phase === 'playing' && S.turn === myId && !S.busy);
+
+  function down(e) {
+    e.preventDefault();
+    if (!mode) return;
+    if (mode === 'solo' && fl.phase === 'done') { resetFlight(myId); msgEl.innerHTML = 'Тапни — цурка подлетит.'; return; }
+    if (!myTurn()) return;
+    if (fl.phase === 'ready') {
+      toss(); msgEl.innerHTML = '';
+      if (mode === 'online') send({ type: 'toss' });
+      return;
+    }
+    if (fl.phase === 'tossed') sw = pos(e);
+  }
+  function up(e) {
+    e.preventDefault();
+    if (fl.phase !== 'tossed' || !sw || !myTurn()) return;
+    const p = pos(e);
+    const dx = p.x - sw.x, dy = sw.y - p.y;
+    const dt = Math.max((p.t - sw.t) / 1000, 0.04);
+    sw = null;
+    if (Math.hypot(dx, dy) < 30 || dx <= 0) return;
+    const timing = 0.5 + 0.5 * Math.min(fl.t.y / PEAK, 1);
+    const speed = Math.min((Math.hypot(dx, dy) / dt) * POWER * 0.25 * timing, MAX_SPEED);
+    const ang = Math.atan2(Math.max(dy, 0), dx);
+    const vx = Math.cos(ang) * speed, vy = Math.sin(ang) * speed + 150;
+    launch(fl.t.y, vx, vy);
+    if (mode === 'online') send({ type: 'hit', y: fl.t.y, vx, vy });
+  }
+  cv.addEventListener('touchstart', down, { passive: false });
+  cv.addEventListener('touchend', up, { passive: false });
+  cv.addEventListener('mousedown', down);
+  cv.addEventListener('mouseup', up);
+
+  // ---------- шаг ----------
+  function update(dt) {
+    if (fl.phase === 'tossed') {
+      fl.t.vy -= GRAVITY * dt; fl.t.y += fl.t.vy * dt; fl.t.a += fl.t.va * dt;
+      if (fl.t.y <= 0) {
+        fl.t.y = 0; fl.phase = 'done';
+        if (mode === 'solo') msgEl.innerHTML = 'Мимо!<br><small>Тапни, чтобы попробовать ещё</small>';
+        else if (fl.owner === myId) send({ type: 'miss' });
+      }
+      return;
+    }
+    if (fl.phase !== 'hit') return;
+    acc += dt;
+    while (acc >= STEP) {
+      acc -= STEP;
+      fl.t.a += fl.t.va * STEP;
+      if (fl.t.y <= 0) fl.t.va *= Math.pow(0.02, STEP);
+      if (physStep(fl.t, STEP)) { finish(); return; }
+    }
+    distEl.textContent = meters().toFixed(1) + ' м';
+  }
+
+  function finish() {
+    fl.phase = 'done';
+    const d = mode === 'online' && fl.result != null ? fl.result : meters();
+    if (mode === 'online') { fl.result = null; renderBoard(); }
+    distEl.textContent = d.toFixed(1) + ' м';
+    const mine = fl.owner === myId;
+    let txt = (mode === 'online' && !mine ? esc(nameOf(fl.owner)) + ': ' : '') + d.toFixed(1) + ' м';
+    if (mine && d > best) {
+      best = d; store.set('turca_best', String(best));
+      txt = 'Новый рекорд! ' + txt;
+    }
+    msgEl.innerHTML = txt + (mode === 'solo' ? '<br><small>Тапни, чтобы сыграть ещё</small>' : '');
+  }
+
+  // ---------- отрисовка ----------
+  function draw() {
+    const camX = Math.max(0, fl.t.x - W * 0.35);
+    ctx.clearRect(0, 0, W, H);
+    const g = ctx.createLinearGradient(0, 0, 0, groundY);
+    g.addColorStop(0, '#87c5ea'); g.addColorStop(1, '#d9eef9');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    // камера по высоте: цурка не уходит за верх экрана
+    const camY = Math.max(0, fl.t.y + 5 - (groundY - 70));
+    ctx.save(); ctx.translate(0, camY);
+    ctx.fillStyle = '#6aa84f'; ctx.fillRect(0, groundY, W, H - groundY);
+    ctx.fillStyle = '#5a9442'; ctx.fillRect(0, groundY, W, 6);
+
+    ctx.fillStyle = '#1d2b36'; ctx.font = '12px system-ui, sans-serif'; ctx.textAlign = 'center';
+    const first = Math.floor(camX / (PX_PER_M * 5)) * 5;
+    for (let m = first; m * PX_PER_M - camX < W + 50; m += 5) {
+      const sx = START_X + m * PX_PER_M - camX;
+      ctx.fillRect(sx - 1, groundY, 2, 12);
+      ctx.fillText(m + ' м', sx, groundY + 28);
+    }
+    // флажки: рекорд и лучшие удары игроков
+    const flags = [];
+    if (best > 0) flags.push({ d: best, label: 'рекорд', c: '#c0392b' });
+    if (mode === 'online' && S) {
+      const colors = ['#8e44ad', '#d35400', '#16a085', '#2c3e50'];
+      S.players.forEach((p, i) => { const b = Math.max(0, ...p.shots); if (b > 0) flags.push({ d: b, label: p.name, c: colors[i % 4] }); });
+    }
+    flags.forEach((f, i) => {
+      const bx = START_X + f.d * PX_PER_M - camX;
+      if (bx < -50 || bx > W + 50) return;
+      const h = 40 + (i % 3) * 16;
+      ctx.fillStyle = f.c; ctx.fillRect(bx - 1, groundY - h, 2, h);
+      ctx.fillText(f.label, bx, groundY - h - 6);
+    });
+
+    const sx0 = START_X - camX;
+    ctx.fillStyle = '#7b5a3a';
+    ctx.beginPath(); ctx.ellipse(sx0, groundY + 2, 22, 6, 0, 0, Math.PI * 2); ctx.fill();
+    if (fl.phase === 'ready' || fl.phase === 'tossed') {
+      ctx.save(); ctx.translate(sx0 - 40, groundY - 10); ctx.rotate(-0.9);
+      ctx.fillStyle = '#a0522d'; ctx.fillRect(-4, -70, 8, 80); ctx.restore();
+    }
+    if (fl.phase !== 'idle') {
+      ctx.save();
+      ctx.translate(fl.t.x - camX, groundY - 5 - fl.t.y);
+      ctx.rotate(fl.t.a);
+      ctx.fillStyle = '#c8955c';
+      ctx.beginPath();
+      ctx.moveTo(-18, 0); ctx.lineTo(-12, -4); ctx.lineTo(12, -4); ctx.lineTo(18, 0);
+      ctx.lineTo(12, 4); ctx.lineTo(-12, 4); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#7b5a3a'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.restore();
+    }
+    ctx.restore();
+    // таймер хода
+    if (mode === 'online' && S && S.phase === 'playing' && !S.busy && S.deadline) {
+      const left = Math.max(0, Math.ceil((S.deadline - (Date.now() - skew)) / 1000));
+      if (left <= 10) { ctx.fillStyle = '#c0392b'; ctx.font = '600 16px system-ui, sans-serif'; ctx.fillText(left + ' c', W / 2, groundY + 52); }
+    }
+  }
+
+  let last = performance.now();
+  function loop(now) {
+    const dt = Math.min((now - last) / 1000, 0.05);
+    last = now;
+    update(dt);
+    draw();
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+
+  if (qCode) $('menuErr').textContent = 'Тебя пригласили в комнату ' + qCode.toUpperCase().slice(0, 4) + ' — введи имя и нажми «Войти»';
+})();
+</script>
+</body>
+</html>
