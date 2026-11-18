@@ -233,7 +233,13 @@ export default {
       }), { headers: { 'content-type': 'application/manifest+json' } });
     }
     if (url.pathname === '/' || url.pathname === '/index.html') {
-      return new Response(html, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache' } });
+      let body = html;
+      // HTML_URL задан → страница берётся из GitHub (обновляется после push, кэш 60 с)
+      if (env.HTML_URL) {
+        const r = await fetch(env.HTML_URL, { cf: { cacheTtl: 60, cacheEverything: true } });
+        if (r.ok) body = await r.text();
+      }
+      return new Response(body || 'Игра временно недоступна', { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache' } });
     }
     if (url.pathname === '/favicon.ico') return new Response(null, { status: 204 });
     return new Response('Not found', { status: 404 });
