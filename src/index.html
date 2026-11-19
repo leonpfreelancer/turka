@@ -52,6 +52,9 @@
   .float { position: fixed; font-size: 34px; pointer-events: none; animation: up 2s ease-out forwards; }
   .float span { display: block; font: 700 18px 'Caveat', cursive; color: #fff8e6; text-shadow: 0 1px 4px #000; text-align: center; }
   @keyframes up { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-140px); opacity: 0; } }
+  .langs { position: absolute; top: 12px; right: 12px; display: flex; gap: 4px; z-index: 1; }
+  .langs .lang { width: auto; font: 700 15px system-ui, sans-serif; padding: 4px 9px; margin: 0; background: transparent; color: #2f4f86; border: 2px solid #2f4f86; box-shadow: none; }
+  .langs .lang.on { background: #2f4f86; color: #fbf8ee; }
   #loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #2b2117; color: #fbf8ee; font: 700 34px 'Caveat', cursive; z-index: 10; transition: opacity .6s; }
 </style>
 </head>
@@ -60,38 +63,40 @@
 <div id="hud"><span id="dist"></span><div id="board"></div></div>
 <div id="msg"></div>
 <div id="timer"></div>
-<button id="topbtn">← Меню</button>
+<button id="topbtn" data-t="menu">← Меню</button>
 <div id="emojis"><button>👏</button><button>😂</button><button>🔥</button><button>😱</button></div>
 
 <div class="panel on" id="pMenu"><div class="card">
+  <div class="langs"><button class="lang" data-l="ro">RO</button><button class="lang" data-l="ru">RU</button></div>
   <h1>Țurca</h1>
-  <div class="sub">Satul, vara anului 1990</div>
-  <p>Подбрось цурку и отбей её как можно дальше по улице. До 4 игроков онлайн.</p>
-  <input id="name" maxlength="16" placeholder="Твоё имя">
-  <button id="bCreate">Создать комнату</button>
-  <div class="rowb"><input id="codeIn" maxlength="4" placeholder="КОД" style="text-transform:uppercase;text-align:center;letter-spacing:4px"><button id="bJoin" class="alt" style="margin-bottom:10px">Войти</button></div>
+  <div class="sub" data-t="sub"></div>
+  <p data-t="intro"></p>
+  <input id="name" maxlength="16" data-ph="name">
+  <button id="bCreate" data-t="create"></button>
+  <div class="rowb"><input id="codeIn" maxlength="4" data-ph="code" style="text-transform:uppercase;text-align:center;letter-spacing:4px"><button id="bJoin" class="alt" style="margin-bottom:10px" data-t="join"></button></div>
   <div class="err" id="menuErr"></div>
-  <button id="bSolo" class="alt">Тренировка (один)</button>
+  <button id="bSolo" class="alt" data-t="solo"></button>
 </div></div>
 
 <div class="panel" id="pLobby"><div class="card">
-  <h2>Комната</h2>
+  <h2 data-t="room"></h2>
   <div class="code" id="lCode"></div>
-  <button id="bShare" class="alt">Пригласить друзей</button>
+  <button id="bShare" class="alt" data-t="invite"></button>
   <ul class="plist" id="lPlayers"></ul>
   <div class="err" id="lobbyErr"></div>
-  <button id="bStart">Начать игру</button>
-  <button id="bLeave" class="alt">Выйти</button>
+  <button id="bStart" data-t="start"></button>
+  <button id="bLeave" class="alt" data-t="leave"></button>
 </div></div>
 
 <div class="panel" id="pEnd"><div class="card">
-  <h2>Итоги</h2>
+  <h2 data-t="results"></h2>
   <ul class="plist" id="eList"></ul>
-  <button id="bAgain">Ещё раз</button>
-  <button id="bEndLeave" class="alt">Выйти</button>
+  <button id="bAgain" data-t="again"></button>
+  <button id="bEndLeave" class="alt" data-t="leave"></button>
 </div></div>
 
-<div id="loading">Se încarcă satul…</div>
+<div id="loading"></div>
+<script>try{var l=localStorage.getItem("turca_lang")||((navigator.language||"").slice(0,2)==="ru"?"ru":"ro");document.getElementById("loading").textContent=l==="ru"?"Загружаем село…":"Se încarcă satul…";document.documentElement.lang=l;}catch(e){document.getElementById("loading").textContent="Se încarcă satul…";}</script>
 
 <script type="importmap">
 { "imports": {
@@ -129,6 +134,39 @@ const store = {
   get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
   set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
 };
+// ================= языки =================
+const L = {
+  ro: {
+    menu: '← Meniu', sub: 'Satul, vara anului 1990', intro: 'Aruncă țurca în sus și lovește-o cât mai departe pe uliță. Până la 4 jucători online.',
+    name: 'Numele tău', create: 'Creează o cameră', code: 'COD', join: 'Intră', solo: 'Antrenament (singur)', room: 'Camera',
+    invite: 'Invită prietenii', start: 'Începe jocul', leave: 'Ieși', results: 'Rezultate', again: 'Încă o dată',
+    hint1: 'Atinge ecranul — țurca sare.', hint2: 'Cât e în aer — glisează spre dreapta-sus ca s-o lovești.',
+    enterName: 'Scrie-ți numele', reconnect: 'Conexiune pierdută, mă reconectez…', you: ' (tu)',
+    hostSolo: 'Poți începe și singur, dar cu prietenii e mai distractiv', waitHost: 'Așteptăm ca gazda să înceapă jocul',
+    round: 'Runda {a} din {b}', yourTurn: 'E rândul tău! Atinge, apoi glisează.', hits: 'Lovește {n}', roundShort: 'Runda',
+    miss: 'Ratat!', missOf: '{n}: ratat!', tryAgain: 'Atinge ca să mai încerci', playAgain: 'Atinge ca să mai joci',
+    newRecord: 'Record nou!', codeLen: 'Codul are 4 caractere', copied: 'Linkul a fost copiat',
+    share: 'Hai la țurcă! Codul camerei: ', invited: 'Ai fost invitat în camera {c} — scrie-ți numele și apasă „Intră”',
+    record: 'record', unit: 'm', sec: 's', player: 'Jucător', running: 'Jocul a început deja', full: 'Camera e plină (maximum 4)',
+  },
+  ru: {
+    menu: '← Меню', sub: 'Село, лето 1990-го', intro: 'Подбрось цурку и отбей её как можно дальше по улице. До 4 игроков онлайн.',
+    name: 'Твоё имя', create: 'Создать комнату', code: 'КОД', join: 'Войти', solo: 'Тренировка (один)', room: 'Комната',
+    invite: 'Пригласить друзей', start: 'Начать игру', leave: 'Выйти', results: 'Итоги', again: 'Ещё раз',
+    hint1: 'Тапни — цурка подлетит.', hint2: 'Пока она в воздухе — свайпни вправо-вверх, чтобы ударить.',
+    enterName: 'Введи имя', reconnect: 'Связь потеряна, переподключаюсь…', you: ' (ты)',
+    hostSolo: 'Можно начать и одному, но с друзьями веселее', waitHost: 'Ждём, когда хозяин комнаты начнёт игру',
+    round: 'Раунд {a} из {b}', yourTurn: 'Твой ход! Тапни, потом свайпни.', hits: 'Бьёт {n}', roundShort: 'Раунд',
+    miss: 'Мимо!', missOf: '{n}: мимо!', tryAgain: 'Тапни, чтобы попробовать ещё', playAgain: 'Тапни, чтобы сыграть ещё',
+    newRecord: 'Новый рекорд!', codeLen: 'Код — 4 символа', copied: 'Ссылка скопирована',
+    share: 'Играем в цурку! Код комнаты: ', invited: 'Тебя пригласили в комнату {c} — введи имя и нажми «Войти»',
+    record: 'рекорд', unit: 'м', sec: 'c', player: 'Игрок', running: 'Игра уже идёт', full: 'Комната заполнена (максимум 4)',
+  },
+};
+let lang = 'ro';
+try { lang = localStorage.getItem('turca_lang') || ((navigator.language || '').slice(0, 2) === 'ru' ? 'ru' : 'ro'); } catch (e) {}
+const T = (k, v = {}) => (L[lang][k] || k).replace(/\{(\w+)\}/g, (_, x) => v[x]);
+const fmt = (d) => d.toFixed(1) + ' ' + T('unit');
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 // ================= 3D: рендер =================
@@ -507,11 +545,12 @@ function textSprite(text, color = '#fff8e6', bg = 'rgba(30,22,14,.55)', h = 0.32
   return s;
 }
 // колышки каждые 10 м
+const markers = [];
 for (let m = 10; m <= 200; m += 10) {
   const st = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.7, 0.08), M.woodDark);
   st.position.set(m, 0.35, 4.6); st.castShadow = true; scene.add(st);
-  const lb = textSprite(m + ' м', '#2a241c', 'rgba(251,248,238,.9)', 0.38);
-  lb.position.set(m, 0.95, 4.6); scene.add(lb);
+  const lb = textSprite(m + ' ' + T('unit'), '#2a241c', 'rgba(251,248,238,.9)', 0.38);
+  lb.position.set(m, 0.95, 4.6); scene.add(lb); markers.push([lb, m]);
 }
 
 // ================= цурка, след, пыль =================
@@ -724,7 +763,7 @@ function startSolo() {
   disconnect();
   mode = 'solo'; S = null; boardEl.innerHTML = '';
   resetFlight(myId);
-  msgEl.innerHTML = 'Тапни — цурка подлетит.<br><small>Пока она в воздухе — свайпни вправо-вверх, чтобы ударить.</small>';
+  msgEl.innerHTML = T('hint1') + '<br><small>' + T('hint2') + '</small>';
   show(null);
 }
 
@@ -732,7 +771,7 @@ let skew = 0, ws = null, room = null, S = null, wantWs = false, turnKey = '';
 const CODE_CH = 'ABCDEFGHJKLMNPRSTUVWXYZ';
 function getName() {
   const n = $('name').value.trim().slice(0, 16);
-  if (!n) { $('menuErr').textContent = 'Введи имя'; return null; }
+  if (!n) { $('menuErr').textContent = T('enterName'); return null; }
   store.set('turca_name', n); return n;
 }
 function connect(code) {
@@ -744,14 +783,14 @@ function connect(code) {
 }
 function open() {
   const url = (location.protocol === 'https:' ? 'wss' : 'ws') + '://' + location.host + '/ws/' + room +
-    '?id=' + encodeURIComponent(myId) + '&name=' + encodeURIComponent(store.get('turca_name') || 'Игрок');
+    '?id=' + encodeURIComponent(myId) + '&name=' + encodeURIComponent(store.get('turca_name') || T('player'));
   const s = new WebSocket(url);
   ws = s;
   s.onmessage = (e) => { if (ws === s) onMsg(JSON.parse(e.data)); };
   s.onclose = () => {
     if (ws !== s) return;
     ws = null;
-    if (wantWs) { msgEl.innerHTML = 'Связь потеряна, переподключаюсь…'; setTimeout(() => { if (wantWs && !ws) open(); }, 1500); }
+    if (wantWs) { msgEl.innerHTML = T('reconnect'); setTimeout(() => { if (wantWs && !ws) open(); }, 1500); }
   };
 }
 function disconnect() {
@@ -764,7 +803,7 @@ const nameOf = (id) => { const p = S && S.players.find((x) => x.id === id); retu
 function onMsg(m) {
   if (m.type === 'error') {
     wantWs = false; mode = null;
-    $('menuErr').textContent = m.msg; show('pMenu'); return;
+    $('menuErr').textContent = /идёт/.test(m.msg) ? T('running') : /заполнена/.test(m.msg) ? T('full') : m.msg; show('pMenu'); return;
   }
   if (m.type === 'state') { S = m; skew = Date.now() - m.now; renderState(); return; }
   if (m.type === 'toss' && m.id !== myId) { resetFlight(m.id); toss(); msgEl.innerHTML = ''; }
@@ -775,7 +814,7 @@ function onMsg(m) {
   }
   if (m.type === 'missed') {
     fl.phase = 'done';
-    msgEl.innerHTML = (m.id === myId ? 'Мимо!' : esc(nameOf(m.id)) + ': мимо!');
+    msgEl.innerHTML = m.id === myId ? T('miss') : T('missOf', { n: esc(nameOf(m.id)) });
     const k = hitterKid(); if (k) kidAct(k, 'sad');
   }
   if (m.type === 'emoji') floatEmoji(m.e, nameOf(m.id));
@@ -784,17 +823,17 @@ function onMsg(m) {
 function renderState() {
   if (S.phase === 'lobby') {
     show('pLobby');
-    $('lPlayers').innerHTML = S.players.map((p) => '<li><span>' + esc(p.name) + (p.id === myId ? ' (ты)' : '') + '</span><span>' + (p.id === S.host ? '👑' : '') + '</span></li>').join('');
+    $('lPlayers').innerHTML = S.players.map((p) => '<li><span>' + esc(p.name) + (p.id === myId ? T('you') : '') + '</span><span>' + (p.id === S.host ? '👑' : '') + '</span></li>').join('');
     const host = S.host === myId;
     $('bStart').style.display = host ? 'block' : 'none';
-    $('lobbyErr').textContent = host ? (S.players.length < 2 ? 'Можно начать и одному, но с друзьями веселее' : '') : 'Ждём, когда хозяин комнаты начнёт игру';
+    $('lobbyErr').textContent = host ? (S.players.length < 2 ? T('hostSolo') : '') : T('waitHost');
     boardEl.innerHTML = '';
     return;
   }
   renderBoard();
   if (S.phase === 'finished') {
     const sorted = [...S.players].sort((a, b) => b.score - a.score);
-    $('eList').innerHTML = sorted.map((p, i) => '<li><span>' + ['🥇', '🥈', '🥉', '4.'][i] + ' ' + esc(p.name) + '</span><b>' + p.score.toFixed(1) + ' м</b></li>').join('');
+    $('eList').innerHTML = sorted.map((p, i) => '<li><span>' + ['🥇', '🥈', '🥉', '4.'][i] + ' ' + esc(p.name) + '</span><b>' + fmt(p.score) + '</b></li>').join('');
     $('bAgain').style.display = S.host === myId ? 'block' : 'none';
     show('pEnd'); msgEl.innerHTML = ''; return;
   }
@@ -805,9 +844,7 @@ function renderState() {
     resetFlight(S.turn);
   }
   if (!S.busy && fl.phase === 'ready') {
-    msgEl.innerHTML = 'Раунд ' + S.round + ' из ' + S.rounds + '<br>' + (S.turn === myId
-      ? 'Твой ход! Тапни, потом свайпни.'
-      : 'Бьёт ' + esc(nameOf(S.turn)));
+    msgEl.innerHTML = T('round', { a: S.round, b: S.rounds }) + '<br>' + (S.turn === myId ? T('yourTurn') : T('hits', { n: esc(nameOf(S.turn)) }));
   }
 }
 
@@ -817,7 +854,7 @@ function renderBoard() {
   const shown = (p) => p.id === pending ? p.score - fl.result : p.score;
   boardEl.innerHTML = S.players.map((p) =>
     '<div class="row' + (p.id === S.turn ? ' cur' : '') + (p.online ? '' : ' off') + '"><span>' + (p.id === S.turn ? '▶ ' : '') + esc(p.name) + '</span><span>' + shown(p).toFixed(1) + '</span></div>').join('') +
-    (S.phase === 'playing' ? '<div class="row" style="opacity:.6"><span>Раунд</span><span>' + S.round + '/' + S.rounds + '</span></div>' : '');
+    (S.phase === 'playing' ? '<div class="row" style="opacity:.6"><span>' + T('roundShort') + '</span><span>' + S.round + '/' + S.rounds + '</span></div>' : '');
 }
 
 function floatEmoji(e, who) {
@@ -838,7 +875,7 @@ $('bCreate').onclick = () => {
 $('bJoin').onclick = () => {
   if (!getName()) return;
   const code = $('codeIn').value.trim().toUpperCase();
-  if (!/^[A-Z0-9]{4}$/.test(code)) { $('menuErr').textContent = 'Код — 4 символа'; return; }
+  if (!/^[A-Z0-9]{4}$/.test(code)) { $('menuErr').textContent = T('codeLen'); return; }
   connect(code);
 };
 $('bSolo').onclick = () => { $('menuErr').textContent = ''; startSolo(); };
@@ -851,10 +888,10 @@ const leave = () => {
 $('bLeave').onclick = leave; $('bEndLeave').onclick = leave; $('topbtn').onclick = leave;
 $('bShare').onclick = async () => {
   const url = location.origin + '/?room=' + room;
-  const text = 'Играем в цурку! Код комнаты: ' + room;
+  const text = T('share') + room;
   try {
     if (navigator.share) await navigator.share({ title: 'Țurca', text, url });
-    else { await navigator.clipboard.writeText(url); $('lobbyErr').textContent = 'Ссылка скопирована'; }
+    else { await navigator.clipboard.writeText(url); $('lobbyErr').textContent = T('copied'); }
   } catch (e) {}
 };
 for (const b of $('emojis').querySelectorAll('button')) b.onclick = (e) => { e.stopPropagation(); send({ type: 'emoji', e: b.textContent }); };
@@ -866,7 +903,7 @@ const myTurn = () => mode === 'solo' || (mode === 'online' && S && S.phase === '
 function down(e) {
   e.preventDefault();
   if (!mode) return;
-  if (mode === 'solo' && fl.phase === 'done') { resetFlight(myId); msgEl.innerHTML = 'Тапни — цурка подлетит.'; return; }
+  if (mode === 'solo' && fl.phase === 'done') { resetFlight(myId); msgEl.innerHTML = T('hint1'); return; }
   if (!myTurn()) return;
   if (fl.phase === 'ready') {
     toss(); msgEl.innerHTML = '';
@@ -901,7 +938,7 @@ function update(dt) {
     if (fl.t.y <= 0) {
       fl.t.y = 0; fl.phase = 'done'; puff(0, 6, 0.5);
       const k = hitterKid(); if (k) kidAct(k, 'sad');
-      if (mode === 'solo') msgEl.innerHTML = 'Мимо!<br><small>Тапни, чтобы попробовать ещё</small>';
+      if (mode === 'solo') msgEl.innerHTML = T('miss') + '<br><small>' + T('tryAgain') + '</small>';
       else if (fl.owner === myId) send({ type: 'miss' });
     }
     return;
@@ -916,25 +953,25 @@ function update(dt) {
     if (physStep(fl.t, STEP)) { finish(); return; }
     if (vyBefore < -120 && fl.t.vy > 0) { puff((fl.t.x - START_X) / PX_PER_M, 10, Math.min(1.6, -vyBefore / 500)); shake = Math.max(shake, 0.05); }
   }
-  distEl.textContent = meters().toFixed(1) + ' м';
+  distEl.textContent = fmt(meters());
 }
 
 function finish() {
   fl.phase = 'done'; orbitA = 0;
   const d = mode === 'online' && fl.result != null ? fl.result : meters();
   if (mode === 'online') { fl.result = null; renderBoard(); }
-  distEl.textContent = d.toFixed(1) + ' м';
+  distEl.textContent = fmt(d);
   puff(meters(), 8, 0.8);
   const lx = meters();
   for (const g of geese) { const dx = g.position.x - lx; if (Math.abs(dx) < 9) g.userData.flee = 2.5; }
   const mine = fl.owner === myId;
-  let txt = (mode === 'online' && !mine ? esc(nameOf(fl.owner)) + ': ' : '') + d.toFixed(1) + ' м';
+  let txt = (mode === 'online' && !mine ? esc(nameOf(fl.owner)) + ': ' : '') + fmt(d);
   if (mine && d > best) {
     best = d; store.set('turca_best', String(best));
-    txt = 'Новый рекорд! ' + txt;
+    txt = T('newRecord') + ' ' + txt;
   }
   const k = hitterKid(); if (k) kidAct(k, d > 25 ? 'cheer' : 'idle');
-  msgEl.innerHTML = txt + (mode === 'solo' ? '<br><small>Тапни, чтобы сыграть ещё</small>' : '');
+  msgEl.innerHTML = txt + (mode === 'solo' ? '<br><small>' + T('playAgain') + '</small>' : '');
 }
 
 // ================= сцена каждый кадр =================
@@ -1039,7 +1076,7 @@ function updateScene(dt, rdt, time) {
 
   // флажки
   const flags = [];
-  if (best > 0) flags.push({ d: best, label: 'рекорд', c: '#b5321f' });
+  if (best > 0) flags.push({ d: best, label: T('record'), c: '#b5321f' });
   if (mode === 'online' && S) {
     const colors = ['#2d5aa8', '#b33a2a', '#3d7a45', '#d0812c'];
     S.players.forEach((p, i) => { const b = Math.max(0, ...p.shots); if (b > 0) flags.push({ d: b, label: p.name, c: colors[i % 4] }); });
@@ -1082,7 +1119,7 @@ function updateScene(dt, rdt, time) {
 function updateTimer() {
   if (mode === 'online' && S && S.phase === 'playing' && !S.busy && S.deadline && fl.phase !== 'hit') {
     const left = Math.max(0, Math.ceil((S.deadline - (Date.now() - skew)) / 1000));
-    timerEl.textContent = left <= 10 ? left + ' c' : '';
+    timerEl.textContent = left <= 10 ? left + ' ' + T('sec') : '';
   } else timerEl.textContent = '';
 }
 
@@ -1102,7 +1139,21 @@ function loop(now) {
 requestAnimationFrame(loop);
 const ld = $('loading'); ld.style.opacity = 0; setTimeout(() => ld.remove(), 700);
 
-if (qCode) $('menuErr').textContent = 'Тебя пригласили в комнату ' + qCode.toUpperCase().slice(0, 4) + ' — введи имя и нажми «Войти»';
+function applyLang(l) {
+  lang = l; store.set('turca_lang', l); document.documentElement.lang = l;
+  document.querySelectorAll('[data-t]').forEach((e) => { e.textContent = T(e.dataset.t); });
+  document.querySelectorAll('[data-ph]').forEach((e) => { e.placeholder = T(e.dataset.ph); });
+  document.querySelectorAll('.lang').forEach((b) => b.classList.toggle('on', b.dataset.l === l));
+  for (const [lb, m] of markers) { const n = textSprite(m + ' ' + T('unit'), '#2a241c', 'rgba(251,248,238,.9)', 0.38); lb.material.map.dispose(); lb.material.map = n.material.map; lb.scale.copy(n.scale); }
+  flagKey = '';
+  if (qCode && !mode) $('menuErr').textContent = T('invited', { c: qCode.toUpperCase().slice(0, 4) });
+  else if ($('menuErr').textContent) $('menuErr').textContent = '';
+  if (mode === 'solo' && fl.phase === 'ready') msgEl.innerHTML = T('hint1') + '<br><small>' + T('hint2') + '</small>';
+  if (mode === 'online' && S) renderState();
+  if (fl.phase === 'done' && distEl.textContent) distEl.textContent = fmt(fl.result != null ? fl.result : meters());
+}
+document.querySelectorAll('.lang').forEach((b) => { b.onclick = () => applyLang(b.dataset.l); });
+applyLang(lang);
 </script>
 </body>
 </html>
